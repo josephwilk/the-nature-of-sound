@@ -8,6 +8,23 @@
 
 
 public class xtract implements xtractConstants {
+  public static SWIGTYPE_p_double new_double_array(int nelements) {
+    long cPtr = xtractJNI.new_double_array(nelements);
+    return (cPtr == 0) ? null : new SWIGTYPE_p_double(cPtr, false);
+  }
+
+  public static void delete_double_array(SWIGTYPE_p_double ary) {
+    xtractJNI.delete_double_array(SWIGTYPE_p_double.getCPtr(ary));
+  }
+
+  public static double double_array_getitem(SWIGTYPE_p_double ary, int index) {
+    return xtractJNI.double_array_getitem(SWIGTYPE_p_double.getCPtr(ary), index);
+  }
+
+  public static void double_array_setitem(SWIGTYPE_p_double ary, int index, double value) {
+    xtractJNI.double_array_setitem(SWIGTYPE_p_double.getCPtr(ary), index, value);
+  }
+
   public static SWIGTYPE_p_void doublea_to_voidp(SWIGTYPE_p_double f) {
     long cPtr = xtractJNI.doublea_to_voidp(SWIGTYPE_p_double.getCPtr(f));
     return (cPtr == 0) ? null : new SWIGTYPE_p_void(cPtr, false);

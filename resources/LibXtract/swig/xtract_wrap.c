@@ -206,6 +206,22 @@ static void SWIGUNUSED SWIG_JavaThrowException(JNIEnv *jenv, SWIG_JavaExceptionC
 #define SWIG_contract_assert(nullreturn, expr, msg) if (!(expr)) {SWIG_JavaThrowException(jenv, SWIG_JavaIllegalArgumentException, msg); return nullreturn; } else
 
 
+static double *new_double_array(int nelements) { 
+  return (double *) calloc(nelements,sizeof(double)); 
+}
+
+static void delete_double_array(double *ary) { 
+  free(ary); 
+}
+
+static double double_array_getitem(double *ary, int index) {
+    return ary[index];
+}
+static void double_array_setitem(double *ary, int index, double value) {
+    ary[index] = value;
+}
+
+
 #include <stdint.h>		// Use the C99 official header
 
 
@@ -334,6 +350,60 @@ typedef struct {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+SWIGEXPORT jlong JNICALL Java_xtractJNI_new_1double_1array(JNIEnv *jenv, jclass jcls, jint jarg1) {
+  jlong jresult = 0 ;
+  int arg1 ;
+  double *result = 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = (int)jarg1; 
+  result = (double *)new_double_array(arg1);
+  *(double **)&jresult = result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_xtractJNI_delete_1double_1array(JNIEnv *jenv, jclass jcls, jlong jarg1) {
+  double *arg1 = (double *) 0 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(double **)&jarg1; 
+  delete_double_array(arg1);
+}
+
+
+SWIGEXPORT jdouble JNICALL Java_xtractJNI_double_1array_1getitem(JNIEnv *jenv, jclass jcls, jlong jarg1, jint jarg2) {
+  jdouble jresult = 0 ;
+  double *arg1 = (double *) 0 ;
+  int arg2 ;
+  double result;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(double **)&jarg1; 
+  arg2 = (int)jarg2; 
+  result = (double)double_array_getitem(arg1,arg2);
+  jresult = (jdouble)result; 
+  return jresult;
+}
+
+
+SWIGEXPORT void JNICALL Java_xtractJNI_double_1array_1setitem(JNIEnv *jenv, jclass jcls, jlong jarg1, jint jarg2, jdouble jarg3) {
+  double *arg1 = (double *) 0 ;
+  int arg2 ;
+  double arg3 ;
+  
+  (void)jenv;
+  (void)jcls;
+  arg1 = *(double **)&jarg1; 
+  arg2 = (int)jarg2; 
+  arg3 = (double)jarg3; 
+  double_array_setitem(arg1,arg2,arg3);
+}
+
 
 SWIGEXPORT jlong JNICALL Java_xtractJNI_doublea_1to_1voidp(JNIEnv *jenv, jclass jcls, jlong jarg1) {
   jlong jresult = 0 ;
