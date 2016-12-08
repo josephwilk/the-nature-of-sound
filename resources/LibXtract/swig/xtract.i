@@ -1,8 +1,10 @@
 %module xtract
 %include typemaps.i
-#ifndef SWIGJAVA
+
 %include carrays.i
-#endif
+%array_functions( double, double_array )
+
+
 %include stdint.i
 
 %{
