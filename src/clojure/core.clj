@@ -1,13 +1,19 @@
 (ns the-nature-of-sound.core
-  (import [xtract]
-          [xtractJNI]
-          [xtract_features_]
-          [xtract_window_types_]))
+  (:require [clojure.java.io :as io]
+            [dynne.sampled-sound :as sample])
+  (:import [xtract]
+           [xtractJNI]
+           [xtract_mel_filter]
+           [xtract_features_]
+           [xtract_window_types_]
+
+          [javax.sound.sampled AudioSystem]))
 
 (defonce xtract-spectrum (.swigValue (xtract_features_/XTRACT_SPECTRUM)))
 (defonce xtract-windowed (.swigValue (xtract_features_/XTRACT_WINDOWED)))
-
 (defonce xtract-hann     (.swigValue (xtract_window_types_/XTRACT_HANN)))
+
+(defonce xtract-equal-gain (.swigValue (xtract_mfcc_types_/XTRACT_EQUAL_GAIN)))
 
 (defn- double->clojure [vs len]
   (let [ls (map-indexed
@@ -88,3 +94,43 @@
   (println (str "Spectrum: " (pr-str spec)))
   (println (str "Features from subframes (window 4, hann): " (pr-str sub)))
   )
+
+
+(let [path               "test/fixtures/test.wav"  ;;             "test/fixtures/the_nature_of_sound.wav"
+      s                       (sample/read-sound path)
+      data   (sample/chunks s 48000)
+
+      data-slice (ffirst data)
+      data-size (count data-slice)
+      MFCC_FREQ_BANDS (double 13)
+      MFCC_FREQ_MIN (double 20)
+      MFCC_FREQ_MAX (double 20000)
+      MFCC_FREQ_BANDS 13
+      SAMPLERATE 44100
+      block-size 512
+
+      mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)]
+
+  ;;  public static int xtract_init_mfcc(
+  ;; int N,
+  ;; double nyquist,
+  ;; int style,
+  ;; double freq_min,
+  ;; double freq_max,
+  ;; int freq_bands,
+  ;; SWIGTYPE_p_p_double fft_tables)
+
+  (xtract/xtract_init_mfcc block-size
+                           SAMPLERATE
+                           xtract-equal-gain
+                           MFCC_FREQ_MIN
+                           MFCC_FREQ_MAX
+                           MFCC_FREQ_BANDS
+                           (xtract_mel_filter/.getFilters mel-filters))
+
+;;    public static xtract_mel_filter create_filterbank(int n_filters, int blocksize) {
+
+
+
+   (println data-slice)
+   )
