@@ -1,9 +1,13 @@
 (ns the-nature-of-sound.core
   (import [xtract]
           [xtractJNI]
-          [xtract_features_]))
+          [xtract_features_]
+          [xtract_window_types_]))
 
 (defonce xtract-spectrum (.swigValue (xtract_features_/XTRACT_SPECTRUM)))
+(defonce xtract-windowed (.swigValue (xtract_features_/XTRACT_WINDOWED)))
+
+(defonce xtract-hann     (.swigValue (xtract_window_types_/XTRACT_HANN)))
 
 (defn- double->clojure [vs len]
   (let [ls (map-indexed
@@ -55,10 +59,29 @@
         (xtract/delete_double_array result)
         r))))
 
+(defn features-from-subframes [vs]
+  (let [len (count vs)
+        xtract-vs (make-double vs)
+        window (xtract/xtract_init_window (/ len 2) xtract-hann)
+        result (make-double (double-array len))]
+
+    (xtract/xtract_features_from_subframes xtract-vs
+                                           len
+                                           xtract-windowed
+                                           (xtract/doublea_to_voidp window)
+                                           result)
+    (let [r (double->clojure result len)]
+      (xtract/delete_double_array xtract-vs)
+      (xtract/delete_double_array result)
+      r)))
+
 (let [m (mean [1 2 4 8 10 12 14 16])
       v (variance [1 2 4 8 10 12 14 16] (make-double [m]))
-      spec (spectrum [1 2 4 8 10 12 14 16] (/ 44100.0 8))]
+      spec (spectrum [1 2 4 8 10 12 14 16] (/ 44100.0 8))
+      sub (features-from-subframes [1 2 4 8 10 12 14 16])]
 
   (println (str "Mean:" m))
   (println (str "Var:" v))
-  (println (str "Spectrum: " (pr-str spec))))
+  (println (str "Spectrum: " (pr-str spec)))
+  (println (str "Features from subframes: " (pr-str sub)))
+  )
