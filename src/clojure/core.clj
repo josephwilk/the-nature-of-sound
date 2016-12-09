@@ -73,6 +73,7 @@
     (let [r (double->clojure result len)]
       (xtract/delete_double_array xtract-vs)
       (xtract/delete_double_array result)
+      (xtract/xtract_free_window window)
       r)))
 
 (let [m (mean [1 2 4 8 10 12 14 16])
