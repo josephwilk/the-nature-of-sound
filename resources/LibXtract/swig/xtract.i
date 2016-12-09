@@ -4,6 +4,11 @@
 %include carrays.i
 %array_functions( double, double_array )
 
+#ifndef SWIGJAVA
+%array_class(double, doubleArray); 
+%array_class(int, intArray); 
+#endif
+%apply double *OUTPUT { double *result };
 
 %include stdint.i
 
@@ -19,13 +24,13 @@
 
 
 %pragma(java) jniclasscode=%{
-static {
-     try { System.loadLibrary("xtract");
-}
-catch (RuntimeException e) {
-  System.out.println("Failed to load the C++ libraries during SWIG module initialisation");
-  e.printStackTrace();
-}
+  static {
+    try { System.loadLibrary("xtract");
+  }
+  catch (RuntimeException e) {
+    System.out.println("Failed to load the C++ libraries during SWIG module initialisation");
+    e.printStackTrace();
+  }
 }
 %}
 
@@ -86,11 +91,6 @@ catch (RuntimeException e) {
 
 %}
 
-#ifndef SWIGJAVA
-%array_class(double, doubleArray); 
-%array_class(int, intArray); 
-#endif
-%apply double *OUTPUT { double *result };
 
 
 %ignore xtract;

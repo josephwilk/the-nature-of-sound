@@ -44,9 +44,9 @@
     (xtract/delete_double_array xtract-vs)
     (double (first result))))
 
-(defn spectrum [vs rate]
+(defn spectrum [vs sample-rate]
   (let [len (count vs)
-        argv (make-double [(double rate)])
+        argv (make-double [(double sample-rate)])
         xtract-vs (make-double vs)
         result (make-double (double-array len))]
 
@@ -59,10 +59,10 @@
         (xtract/delete_double_array result)
         r))))
 
-(defn features-from-subframes [vs]
+(defn features-from-subframes [vs window-size window-type]
   (let [len (count vs)
         xtract-vs (make-double vs)
-        window (xtract/xtract_init_window (/ len 2) xtract-hann)
+        window (xtract/xtract_init_window window-size window-type)
         result (make-double (double-array len))]
 
     (xtract/xtract_features_from_subframes xtract-vs
@@ -78,10 +78,12 @@
 (let [m (mean [1 2 4 8 10 12 14 16])
       v (variance [1 2 4 8 10 12 14 16] (make-double [m]))
       spec (spectrum [1 2 4 8 10 12 14 16] (/ 44100.0 8))
-      sub (features-from-subframes [1 2 4 8 10 12 14 16])]
+      sub (features-from-subframes [1 2 4 8 10 12 14 16]
+                                   (/ 8 2)
+                                   xtract-hann)]
 
   (println (str "Mean:" m))
   (println (str "Var:" v))
   (println (str "Spectrum: " (pr-str spec)))
-  (println (str "Features from subframes: " (pr-str sub)))
+  (println (str "Features from subframes (window 4, hann): " (pr-str sub)))
   )
