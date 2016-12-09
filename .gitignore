@@ -12,3 +12,5 @@ pom.xml.asc
 libxtract.dylib
 resources/LibXtract/swig/*.java
 resources/LibXtract/swig/*.class
+*.o
+*.log
