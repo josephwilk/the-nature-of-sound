@@ -96,18 +96,21 @@
   )
 
 
-(let [path               "test/fixtures/test.wav"  ;;             "test/fixtures/the_nature_of_sound.wav"
+(let [path                    "test/fixtures/test.wav"  ;;             "test/fixtures/the_nature_of_sound.wav"
       s                       (sample/read-sound path)
-      data   (sample/chunks s 48000)
 
-      data-slice (ffirst data)
-      data-size (count data-slice)
       MFCC_FREQ_BANDS (double 13)
       MFCC_FREQ_MIN (double 20)
       MFCC_FREQ_MAX (double 20000)
       MFCC_FREQ_BANDS 13
       SAMPLERATE 44100
+
+      data   (sample/chunks s SAMPLERATE)
+      data-slice (ffirst data)
+      data-size (count data-slice)
+
       block-size 512
+      half-block-size (/ 512 2)
 
       mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)]
 
@@ -120,17 +123,47 @@
   ;; int freq_bands,
   ;; SWIGTYPE_p_p_double fft_tables)
 
-  (xtract/xtract_init_mfcc block-size
-                           SAMPLERATE
+  (xtract/xtract_init_mfcc (/ block-size 2)
+                           (/ SAMPLERATE 2)
                            xtract-equal-gain
                            MFCC_FREQ_MIN
                            MFCC_FREQ_MAX
                            MFCC_FREQ_BANDS
                            (xtract_mel_filter/.getFilters mel-filters))
 
-;;    public static xtract_mel_filter create_filterbank(int n_filters, int blocksize) {
+  (let [w    (xtract/xtract_init_window block-size xtract-hann)
+        subw (xtract/xtract_init_window half-block-size xtract-hann)
+        argv (make-double [(double SAMPLERATE)])
+        ]
 
+    ;;LEAKING ALL THE MEMORY
+    (xtract/xtract_init_wavelet_f0_state)
 
+    (doseq [s data]
+      (doseq [v s]
+        (let [ds (make-double (vec v))
+              r    (double-array [1])]
+          (xtract/xtract_wavelet_f0 ds block-size (xtract/doublea_to_voidp argv) r)
+          (let [f0 (first (vec r))]
+            (xtract/xtract_midicent nil 0 (xtract/doublea_to_voidp (make-double (vec r))) r)
+            (let [cents (first (vec r))]
+              (when (not= f0 0.0)
+                (println "f0   : " f0)
+                (println "cents: " (/ cents 100)))))
+          )))
 
-   (println data-slice)
-   )
+    (xtract/xtract_free_window w)
+    (xtract/xtract_free_window subw)
+    (xtract/destroy_filterbank mel-filters)
+    ))
+
+;;f0: 167.04545454545453
+;;f0: 196.875
+;;f0: 303.440366972477
+;;f0: 263.54581673306774
+;;f0: 263.44086021505376
+;;f0: 264.86486486486484
+;;f0: 266.0633484162896
+;;f0: 263.54581673306774
+;;f0: 263.2835820895522
+;;f0: 258.3984375
