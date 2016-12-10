@@ -96,32 +96,20 @@
   )
 
 
-(let [path                    "test/fixtures/test.wav"  ;;             "test/fixtures/the_nature_of_sound.wav"
-      s                       (sample/read-sound path)
-
+(let [path "test/fixtures/test.wav"  ;;             "test/fixtures/the_nature_of_sound.wav"
+      s    (sample/read-sound path)
       MFCC_FREQ_BANDS (double 13)
       MFCC_FREQ_MIN (double 20)
       MFCC_FREQ_MAX (double 20000)
       MFCC_FREQ_BANDS 13
       SAMPLERATE 44100
-
       data   (sample/chunks s SAMPLERATE)
       data-slice (ffirst data)
       data-size (count data-slice)
-
       block-size 512
       half-block-size (/ 512 2)
 
       mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)]
-
-  ;;  public static int xtract_init_mfcc(
-  ;; int N,
-  ;; double nyquist,
-  ;; int style,
-  ;; double freq_min,
-  ;; double freq_max,
-  ;; int freq_bands,
-  ;; SWIGTYPE_p_p_double fft_tables)
 
   (xtract/xtract_init_mfcc (/ block-size 2)
                            (/ SAMPLERATE 2)
@@ -133,8 +121,7 @@
 
   (let [w    (xtract/xtract_init_window block-size xtract-hann)
         subw (xtract/xtract_init_window half-block-size xtract-hann)
-        argv (make-double [(double SAMPLERATE)])
-        ]
+        argv (make-double [(double SAMPLERATE)])]
 
     ;;LEAKING ALL THE MEMORY
     (xtract/xtract_init_wavelet_f0_state)
@@ -142,20 +129,19 @@
     (doseq [s data]
       (doseq [v s]
         (let [ds (make-double (vec v))
-              r    (double-array [1])]
+              r  (double-array [1])]
           (xtract/xtract_wavelet_f0 ds block-size (xtract/doublea_to_voidp argv) r)
           (let [f0 (first (vec r))]
             (xtract/xtract_midicent nil 0 (xtract/doublea_to_voidp (make-double (vec r))) r)
             (let [cents (first (vec r))]
               (when (not= f0 0.0)
-                (println "f0   : " f0)
-                (println "cents: " (/ cents 100)))))
+                (println "f0       :" f0)
+                (println "midi-note:" (/ cents 100)))))
           )))
 
     (xtract/xtract_free_window w)
     (xtract/xtract_free_window subw)
-    (xtract/destroy_filterbank mel-filters)
-    ))
+    (xtract/destroy_filterbank mel-filters)))
 
 ;;f0: 167.04545454545453
 ;;f0: 196.875
