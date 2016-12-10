@@ -6,6 +6,7 @@
            [xtract_mel_filter]
            [xtract_features_]
            [xtract_window_types_]
+           [xtract_spectrum_]
 
           [javax.sound.sampled AudioSystem]))
 
@@ -14,6 +15,8 @@
 (defonce xtract-hann     (.swigValue (xtract_window_types_/XTRACT_HANN)))
 
 (defonce xtract-equal-gain (.swigValue (xtract_mfcc_types_/XTRACT_EQUAL_GAIN)))
+
+(defonce xtract-spectrum-magnitude (.swigValue (xtract_spectrum_/XTRACT_MAGNITUDE_SPECTRUM)))
 
 (defn- double->clojure [vs len]
   (let [ls (map-indexed
@@ -137,7 +140,24 @@
               (when (not= f0 0.0)
                 (println "f0       :" f0)
                 (println "midi-note:" (/ cents 100)))))
-          )))
+
+
+          ;;    xtract_windowed(&data[n], BLOCKSIZE, window, windowed);
+          ;;  public static int xtract_windowed(SWIGTYPE_p_double data, int N, SWIGTYPE_p_void argv, SWIGTYPE_p_double result)
+          (let [windowed (make-double (range 0 block-size))
+                spectrum (make-double (range 0 block-size))
+
+                argd (make-double [(/ SAMPLERATE block-size)
+                                   xtract-spectrum-magnitude
+                                   (double 0)
+                                   (double 0)])]
+            (xtract/xtract_windowed ds block-size (xtract/doublea_to_voidp w) windowed)
+            (xtract/xtract_init_fft block-size xtract-spectrum)
+            (xtract/xtract_spectrum windowed block-size (xtract/doublea_to_voidp argd) spectrum)
+            (xtract/xtract_free_fft)
+
+            (println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
+            ))))
 
     (xtract/xtract_free_window w)
     (xtract/xtract_free_window subw)
