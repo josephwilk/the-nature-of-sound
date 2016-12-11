@@ -3,4 +3,4 @@
 * `:spectral-inharmonicity`
 * `:rms-amplitude`
 * `:f0`
-* `midi-note`
+* `:midi-note`
