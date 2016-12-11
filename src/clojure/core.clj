@@ -164,7 +164,7 @@
                     (let [f0 (first (vec r))]
                       (xtract/xtract_midicent nil 0 (xtract/doublea_to_voidp (make-double (vec r))) r)
                       (let [cents (first (vec r))
-                            midi (/ cents 100)]
+                            midi (format "%.0f" (/ cents 100))]
 
                         (let [windowed (make-double (range 0 block-size))
                               spectrum (make-double (range 0 block-size))
