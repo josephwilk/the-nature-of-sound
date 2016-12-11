@@ -7,6 +7,7 @@
            [xtract_features_]
            [xtract_window_types_]
            [xtract_spectrum_]
+           [xtract_subband_scales_]
 
           [javax.sound.sampled AudioSystem]))
 
@@ -17,6 +18,8 @@
 (defonce xtract-equal-gain (.swigValue (xtract_mfcc_types_/XTRACT_EQUAL_GAIN)))
 
 (defonce xtract-spectrum-magnitude (.swigValue (xtract_spectrum_/XTRACT_MAGNITUDE_SPECTRUM)))
+
+(defonce xtract-linear-subbands  (.swigValue (xtract_subband_scales_/XTRACT_LINEAR_SUBBANDS)))
 
 (defn- double->clojure [vs len]
   (let [ls (map-indexed
@@ -32,6 +35,19 @@
       (fn [idx f] (xtract/double_array_setitem xtract-vs idx (double f)))
       vs))
     xtract-vs))
+
+(defn- xtract-args [& args] (xtract/doublea_to_voidp (make-double args)))
+
+(defn with-result [t xtract-fn]
+  (let [r t]
+    (xtract-fn r)
+    (let [out (nth (vec r) 0)]
+      out)))
+
+(defn spectral-inharmonicity [peaks-data block-size & args]
+  (with-result
+    (double-array [0])
+    (fn [r] (xtract/xtract_spectral_inharmonicity peaks-data block-size (apply xtract-args args) r))))
 
 (defn mean [vs]
   (let [result (double-array 1)
@@ -99,69 +115,97 @@
   )
 
 
-(let [path "test/fixtures/test.wav"  ;;             "test/fixtures/the_nature_of_sound.wav"
-      s    (sample/read-sound path)
-      MFCC_FREQ_BANDS (double 13)
-      MFCC_FREQ_MIN (double 20)
-      MFCC_FREQ_MAX (double 20000)
-      MFCC_FREQ_BANDS 13
-      SAMPLERATE 44100
-      data   (sample/chunks s SAMPLERATE)
-      data-slice (ffirst data)
-      data-size (count data-slice)
-      block-size 512
-      half-block-size (/ 512 2)
+(defn peek-inside [sample-path]
+  (let [path sample-path ;;             "test/fixtures/the_nature_of_sound.wav"
+        s    (sample/read-sound path)
+        MFCC_FREQ_BANDS (double 13)
+        MFCC_FREQ_MIN (double 20)
+        MFCC_FREQ_MAX (double 20000)
 
-      mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)]
+        NUM_HARMONICS  10
 
-  (xtract/xtract_init_mfcc (/ block-size 2)
-                           (/ SAMPLERATE 2)
-                           xtract-equal-gain
-                           MFCC_FREQ_MIN
-                           MFCC_FREQ_MAX
-                           MFCC_FREQ_BANDS
-                           (xtract_mel_filter/.getFilters mel-filters))
+        MFCC_FREQ_BANDS 13
+        SAMPLERATE 44100
+        data   (sample/chunks s SAMPLERATE)
+        data-slice (ffirst data)
+        data-size (count data-slice)
+        block-size 512
+        half-block-size (/ 512 2)
 
-  (let [w    (xtract/xtract_init_window block-size xtract-hann)
-        subw (xtract/xtract_init_window half-block-size xtract-hann)
-        argv (make-double [(double SAMPLERATE)])]
+        mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)]
 
-    ;;LEAKING ALL THE MEMORY
-    (xtract/xtract_init_wavelet_f0_state)
+    (xtract/xtract_init_mfcc (/ block-size 2)
+                             (/ SAMPLERATE 2)
+                             xtract-equal-gain
+                             MFCC_FREQ_MIN
+                             MFCC_FREQ_MAX
+                             MFCC_FREQ_BANDS
+                             (xtract_mel_filter/.getFilters mel-filters))
 
-    (doseq [s data]
-      (doseq [v s]
-        (let [ds (make-double (vec v))
-              r  (double-array [1])]
-          (xtract/xtract_wavelet_f0 ds block-size (xtract/doublea_to_voidp argv) r)
-          (let [f0 (first (vec r))]
-            (xtract/xtract_midicent nil 0 (xtract/doublea_to_voidp (make-double (vec r))) r)
-            (let [cents (first (vec r))]
-              (when (not= f0 0.0)
-                (println "f0       :" f0)
-                (println "midi-note:" (/ cents 100)))))
+    (let [w    (xtract/xtract_init_window block-size xtract-hann)
+          subw (xtract/xtract_init_window half-block-size xtract-hann)
+          argv (make-double [(double SAMPLERATE)])]
 
+      ;;LEAKING ALL THE MEMORY
+      (xtract/xtract_init_wavelet_f0_state)
 
-          ;;    xtract_windowed(&data[n], BLOCKSIZE, window, windowed);
-          ;;  public static int xtract_windowed(SWIGTYPE_p_double data, int N, SWIGTYPE_p_void argv, SWIGTYPE_p_double result)
-          (let [windowed (make-double (range 0 block-size))
-                spectrum (make-double (range 0 block-size))
+      (let [stats
+            (map-indexed
+             (fn [idx s]
+               (map
+                (fn [v]
+                  (let [ds (make-double (vec v))
+                        r  (double-array [1])]
 
-                argd (make-double [(/ SAMPLERATE block-size)
-                                   xtract-spectrum-magnitude
-                                   (double 0)
-                                   (double 0)])]
-            (xtract/xtract_windowed ds block-size (xtract/doublea_to_voidp w) windowed)
-            (xtract/xtract_init_fft block-size xtract-spectrum)
-            (xtract/xtract_spectrum windowed block-size (xtract/doublea_to_voidp argd) spectrum)
-            (xtract/xtract_free_fft)
+                    (xtract/xtract_wavelet_f0 ds block-size (xtract/doublea_to_voidp argv) r)
 
-            (println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
-            ))))
+                    (let [f0 (first (vec r))]
+                      (xtract/xtract_midicent nil 0 (xtract/doublea_to_voidp (make-double (vec r))) r)
+                      (let [cents (first (vec r))
+                            midi (/ cents 100)]
 
-    (xtract/xtract_free_window w)
-    (xtract/xtract_free_window subw)
-    (xtract/destroy_filterbank mel-filters)))
+                        (let [windowed (make-double (range 0 block-size))
+                              spectrum (make-double (range 0 block-size))
+
+                              argd (make-double [(/ SAMPLERATE block-size)
+                                                 xtract-spectrum-magnitude
+                                                 (double 0)
+                                                 (double 0)])]
+                          (xtract/xtract_windowed ds block-size (xtract/doublea_to_voidp w) windowed)
+                          (xtract/xtract_init_fft block-size xtract-spectrum)
+                          (xtract/xtract_spectrum windowed block-size (xtract/doublea_to_voidp argd) spectrum)
+                          (xtract/xtract_free_fft)
+
+                          (let [peaks (make-double (range 0 block-size))
+                                argv (make-double [(/ SAMPLERATE block-size)
+                                                   (double 10)
+                                                   (double 0)
+                                                   (double 0)])]
+
+                            (xtract/xtract_peak_spectrum spectrum (double (/ block-size 2)) (xtract/doublea_to_voidp argv) peaks)
+
+                            (let [spectral-inharmonicity (spectral-inharmonicity
+                                                          peaks block-size
+                                                          f0 0.5 NUM_HARMONICS 0)
+                                  r {:spectral-inharmonicity spectral-inharmonicity
+                                     :midi midi
+                                     :f0 f0}]
+                              [idx r]))
+                              ;;(println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
+                          )))))
+                s))
+             data)]
+
+        (xtract/xtract_free_window w)
+        (xtract/xtract_free_window subw)
+        (xtract/destroy_filterbank mel-filters)
+
+        (vec (flatten stats))
+        ))))
+
+(println
+ (doseq [r (peek-inside "test/fixtures/test.wav")]
+   (println r)))
 
 ;;f0: 167.04545454545453
 ;;f0: 196.875
