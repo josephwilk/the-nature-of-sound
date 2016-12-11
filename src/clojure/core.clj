@@ -8,11 +8,16 @@
            [xtract_window_types_]
            [xtract_spectrum_]
            [xtract_subband_scales_]
+           [xtractConstants]
 
           [javax.sound.sampled AudioSystem]))
 
 (defonce xtract-spectrum (.swigValue (xtract_features_/XTRACT_SPECTRUM)))
 (defonce xtract-windowed (.swigValue (xtract_features_/XTRACT_WINDOWED)))
+(defonce xtract-bark-coefficents (.swigValue (xtract_features_/XTRACT_BARK_COEFFICIENTS)))
+
+(defonce xtract-bark-bands (xtractConstants/XTRACT_BARK_BANDS))
+
 (defonce xtract-hann     (.swigValue (xtract_window_types_/XTRACT_HANN)))
 
 (defonce xtract-equal-gain (.swigValue (xtract_mfcc_types_/XTRACT_EQUAL_GAIN)))
@@ -134,7 +139,11 @@
         block-size 512
         half-block-size (/ 512 2)
 
-        mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)]
+        mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)
+
+      ;;  bark-band-limits (xtract/new_int_array 0)
+    ;;    _ (xtract/int_array_setitem bark-band-limits 0 0)
+        ]
 
     (xtract/xtract_init_mfcc (/ block-size 2)
                              (/ SAMPLERATE 2)
@@ -143,6 +152,11 @@
                              MFCC_FREQ_MAX
                              MFCC_FREQ_BANDS
                              (xtract_mel_filter/.getFilters mel-filters))
+
+    ;;  public static int xtract_init_bark(int N, double sr, SWIGTYPE_p_int band_limits) {
+  ;;  (xtract/xtract_init_bark block-size SAMPLERATE bark-band-limits)
+
+;;    (println (xtract/int_array_getitem bark-band-limits 0))
 
     (let [w    (xtract/xtract_init_window block-size xtract-hann)
           subw (xtract/xtract_init_window half-block-size xtract-hann)
@@ -189,6 +203,9 @@
 ;;                            public static int xtract_rms_amplitude(SWIGTYPE_p_double data, int N, SWIGTYPE_p_void argv, double[] result)
 
                             (let [rms (double-array [0])
+                                  noiseness (double-array [0])
+                                  loudness (double-array [0])
+                                  tonality (double-array [0])
                                   argv [(/ SAMPLERATE block-size)]
 
                                   spectral-inharmonicity (spectral-inharmonicity
@@ -196,10 +213,26 @@
                                                           f0 0.5 NUM_HARMONICS 0)]
 
                               (xtract/xtract_rms_amplitude ds block-size (apply xtract-args argv) rms)
+;;                              (xtract/xtract_noisiness     ds block-size (xtract-args NUM_HARMONICS ) noiseness)
+
+                              (let [_ 10
+                                    ;;bark-cofficents (make-double (range 0 xtract-bark-bands))
+                                   ]
+
+                               ;; (println :BAND bark-band-limits)
+;;                                (xtract/xtract_bark_coefficients spectrum half-block-size (xtract-args ) bark-cofficents)
+;;                                (xtract/xtract_loudness      ds block-size (apply xtract-args argv) loudness)
+                                )
+
+                              ;;TODO
+                              (xtract/xtract_tonality      ds block-size (xtract-args ) tonality)
 
                               {(* idx SAMPLERATE)
                                {:spectral-inharmonicity spectral-inharmonicity
                                 :rms_amplitude (first rms)
+                                ;;                              :noisiness (first noiseness)
+                                ;;                                :loudness (first loudness)
+                                ;;                               :tonality (first tonality)
                                 :midi midi
                                 :f0 f0}
                                }))
