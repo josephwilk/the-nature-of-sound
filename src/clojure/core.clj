@@ -200,42 +200,78 @@
 
                             (xtract/xtract_peak_spectrum spectrum (double (/ block-size 2)) (xtract/doublea_to_voidp argv) peaks)
 
+
 ;;                            public static int xtract_rms_amplitude(SWIGTYPE_p_double data, int N, SWIGTYPE_p_void argv, double[] result)
 
                             (let [rms (double-array [0])
                                   noiseness (double-array [0])
                                   loudness (double-array [0])
                                   tonality (double-array [0])
+                                  irregularity_k (double-array [0])
                                   argv [(/ SAMPLERATE block-size)]
+                                  spectral-irregularity (double-array [0])
+                                  spectral-centroid (double-array [0])
+                                  spectral-variance (double-array [0])
 
                                   spectral-inharmonicity (spectral-inharmonicity
                                                           peaks block-size
                                                           f0 0.5 NUM_HARMONICS 0)]
 
                               (xtract/xtract_rms_amplitude ds block-size (apply xtract-args argv) rms)
-;;                              (xtract/xtract_noisiness     ds block-size (xtract-args NUM_HARMONICS ) noiseness)
 
-                              (let [_ 10
-                                    ;;bark-cofficents (make-double (range 0 xtract-bark-bands))
-                                   ]
+                              (xtract/xtract_spectral_centroid spectrum block-size nil spectral-centroid)
+                              (xtract/xtract_irregularity_j    spectrum half-block-size nil spectral-irregularity)
 
-                               ;; (println :BAND bark-band-limits)
-;;                                (xtract/xtract_bark_coefficients spectrum half-block-size (xtract-args ) bark-cofficents)
-;;                                (xtract/xtract_loudness      ds block-size (apply xtract-args argv) loudness)
-                                )
 
-                              ;;TODO
-                              (xtract/xtract_tonality      ds block-size (xtract-args ) tonality)
+                              (let [spectral-skewness (double-array [0])
+                                    spectral-std-deviation (double-array [0])
+                                     spectral-mean (double-array [0])
+                                    spectral-kurtosis (double-array [0])
+                                    argv (make-double [])]
 
-                              {(* idx SAMPLERATE)
-                               {:spectral-inharmonicity spectral-inharmonicity
-                                :rms_amplitude (first rms)
-                                ;;                              :noisiness (first noiseness)
-                                ;;                                :loudness (first loudness)
-                                ;;                               :tonality (first tonality)
-                                :midi midi
-                                :f0 f0}
-                               }))
+                                (xtract/xtract_spectral_mean spectrum block-size nil spectral-mean)
+                                (xtract/xtract_variance spectrum block-size (xtract-args (first spectral-mean)) spectral-variance)
+                                (xtract/xtract_spectral_standard_deviation spectrum block-size (xtract-args (first spectral-variance)) spectral-std-deviation)
+
+                                (println :std (first spectral-std-deviation))
+                                (println :cen (first spectral-centroid))
+
+                                (let [argv (make-double [(first spectral-mean)
+                                                         (first spectral-std-deviation)]) ])
+
+                                ;;fails
+                                (xtract/xtract_spectral_skewness spectrum block-size (xtract/doublea_to_voidp argv) spectral-skewness)
+                                (xtract/xtract_spectral_kurtosis spectrum block-size (xtract/doublea_to_voidp argv) spectral-kurtosis)
+
+                                ;;                              (xtract/xtract_noisiness     ds block-size (xtract-args NUM_HARMONICS ) noiseness)
+
+                                (let [_ 10
+                                      ;;bark-cofficents (make-double (range 0 xtract-bark-bands))
+                                      ]
+
+                                  ;; (println :BAND bark-band-limits)
+                                  ;;                                (xtract/xtract_bark_coefficients spectrum half-block-size (xtract-args ) bark-cofficents)
+                                  ;;                                (xtract/xtract_loudness      ds block-size (apply xtract-args argv) loudness)
+                                  )
+
+                                ;;TODO
+;;                                (xtract/xtract_tonality      ds block-size (xtract-args ) tonality)
+
+                                {(* idx SAMPLERATE)
+                                 {:spectral-inharmonicity   spectral-inharmonicity
+                                  :spectral-irregularity    (first spectral-irregularity)
+                                  :spectral-centroid        (first spectral-centroid)
+
+                                  :todo {:spectral-skewness (first spectral-skewness)
+                                         :spectral-kurtosis (first spectral-kurtosis)}
+                                  :rms_amplitude            (first rms)
+
+                                  ;;                              :noisiness (first noiseness)
+                                  ;;                                :loudness (first loudness)
+                                  ;;                               :tonality (first tonality)
+                                  :midi midi
+                                  :f0 f0}
+                                 })))
                               ;;(println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
                           )))))
                 s))
