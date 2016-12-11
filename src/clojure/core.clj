@@ -190,7 +190,7 @@
                                   r {:spectral-inharmonicity spectral-inharmonicity
                                      :midi midi
                                      :f0 f0}]
-                              [idx r]))
+                              {(* idx SAMPLERATE) r}))
                               ;;(println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
                           )))))
                 s))
