@@ -49,6 +49,10 @@
     (double-array [0])
     (fn [r] (xtract/xtract_spectral_inharmonicity peaks-data block-size (apply xtract-args args) r))))
 
+(defn wavelet_f0 []
+
+  )
+
 (defn mean [vs]
   (let [result (double-array 1)
         len (count vs)
@@ -116,14 +120,12 @@
 
 
 (defn peek-inside [sample-path]
-  (let [path sample-path ;;             "test/fixtures/the_nature_of_sound.wav"
+  (let [path sample-path
         s    (sample/read-sound path)
         MFCC_FREQ_BANDS (double 13)
-        MFCC_FREQ_MIN (double 20)
-        MFCC_FREQ_MAX (double 20000)
-
-        NUM_HARMONICS  10
-
+        MFCC_FREQ_MIN   (double 20)
+        MFCC_FREQ_MAX   (double 20000)
+        NUM_HARMONICS   10
         MFCC_FREQ_BANDS 13
         SAMPLERATE 44100
         data   (sample/chunks s SAMPLERATE)
@@ -184,13 +186,23 @@
 
                             (xtract/xtract_peak_spectrum spectrum (double (/ block-size 2)) (xtract/doublea_to_voidp argv) peaks)
 
-                            (let [spectral-inharmonicity (spectral-inharmonicity
+;;                            public static int xtract_rms_amplitude(SWIGTYPE_p_double data, int N, SWIGTYPE_p_void argv, double[] result)
+
+                            (let [rms (double-array [0])
+                                  argv [(/ SAMPLERATE block-size)]
+
+                                  spectral-inharmonicity (spectral-inharmonicity
                                                           peaks block-size
-                                                          f0 0.5 NUM_HARMONICS 0)
-                                  r {:spectral-inharmonicity spectral-inharmonicity
-                                     :midi midi
-                                     :f0 f0}]
-                              {(* idx SAMPLERATE) r}))
+                                                          f0 0.5 NUM_HARMONICS 0)]
+
+                              (xtract/xtract_rms_amplitude ds block-size (apply xtract-args argv) rms)
+
+                              {(* idx SAMPLERATE)
+                               {:spectral-inharmonicity spectral-inharmonicity
+                                :rms_amplitude (first rms)
+                                :midi midi
+                                :f0 f0}
+                               }))
                               ;;(println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
                           )))))
                 s))
@@ -203,17 +215,6 @@
         (vec (flatten stats))
         ))))
 
-(println
- (doseq [r (peek-inside "test/fixtures/test.wav")]
-   (println r)))
-
-;;f0: 167.04545454545453
-;;f0: 196.875
-;;f0: 303.440366972477
-;;f0: 263.54581673306774
-;;f0: 263.44086021505376
-;;f0: 264.86486486486484
-;;f0: 266.0633484162896
-;;f0: 263.54581673306774
-;;f0: 263.2835820895522
-;;f0: 258.3984375
+(println "" )
+(doseq [r (peek-inside "test/fixtures/test.wav")]
+  (println r))
