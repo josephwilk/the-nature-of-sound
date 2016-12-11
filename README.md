@@ -1,6 +1,8 @@
 # The Nature of Sound?
 
-* `:spectral-inharmonicity`
-* `:rms-amplitude`
 * `:f0`
 * `:midi-note`
+* `:rms-amplitude`
+* `:spectral-centroid`
+* `:spectral-irregularity`
+* `:spectral-inharmonicity`
