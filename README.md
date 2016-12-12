@@ -1,10 +1,10 @@
 # The Nature of Sound?
 
-Using samples to create music you quickly learn the power of manpulating, splicing, reversing & chopping, turning a fixed sample into something dynamic. This leads quickly to an understanding that samples are data. The more we understand this data the more we increase the flexiblity of the sample as an instrument. That is the goal of this project. 
+Using samples to create music you quickly learn the power of manipulating, splicing, reversing & chopping, turning a fixed sample into something dynamic. This leads quickly to an understanding that samples are data. The more we understand this data the more we increase the flexibility of the sample as an instrument. That is the goal of this project. 
 
 ## Build
 
-Only tested on Mac. Requires the complication of c++ Xtract lib.
+Only tested on Mac. Requires the compilation of c++ Xtract lib.
 
 ```
 make
@@ -28,7 +28,7 @@ Fundamental frequency. The musical pitch of a note that is perceived as the lowe
 Midi note.
 
 `:rms-amplitude`
-Root mean squared amplitude. Voume.
+Root mean squared amplitude. Volume.
 
 `:spectral-centroid`
 A good predictor of the brightness of a sound.
