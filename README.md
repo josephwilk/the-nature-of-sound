@@ -2,7 +2,24 @@
 
 Using samples to create music you quickly learn the power of manpulating, splicing, reversing & chopping, turning a fixed sample into something dynamic. This leads quickly to an understanding that samples are data. The more we understand this data the more we increase the flexiblity of the sample as an instrument. That is the goal of this project. 
 
+## Build
+
+Only tested on Mac. Requires the complication of c++ Xtract lib.
+
+```
+make
+```
+
+## Usage
+
+```clojure
+(require '[the-nature-of-sound.core :as nos])
+(nos/peek-inside "test/fixtures/test.wav")
+```
+
 ## Features of sound
+
+Data provided by `peek-inside` fn.
 
 `:f0`
 Fundamental frequency. The musical pitch of a note that is perceived as the lowest partial present.
@@ -25,6 +42,11 @@ The degree to which the frequencies of overtones depart from whole multiples of 
 * Tuned percussion ~ nearly harmonic
 * Untuned percussion ~ not harmonic.
 
+`:spectral-skewness`
+Whether or not the spectrum is skewed towards a particular range of values.
+
+`:spectral-kurtosis`
+A good predictor of the pointedness of a spectrum, can be used to indicate pitchiness.
 
 # License
 
