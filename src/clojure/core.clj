@@ -12,25 +12,27 @@
 
           [javax.sound.sampled AudioSystem]))
 
-(defonce xtract-spectrum (.swigValue (xtract_features_/XTRACT_SPECTRUM)))
-(defonce xtract-windowed (.swigValue (xtract_features_/XTRACT_WINDOWED)))
+(defonce xtract-spectrum         (.swigValue (xtract_features_/XTRACT_SPECTRUM)))
+(defonce xtract-windowed         (.swigValue (xtract_features_/XTRACT_WINDOWED)))
 (defonce xtract-bark-coefficents (.swigValue (xtract_features_/XTRACT_BARK_COEFFICIENTS)))
 
-(defonce xtract-bark-bands (xtractConstants/XTRACT_BARK_BANDS))
-
-(defonce xtract-hann     (.swigValue (xtract_window_types_/XTRACT_HANN)))
-
-(defonce xtract-equal-gain (.swigValue (xtract_mfcc_types_/XTRACT_EQUAL_GAIN)))
-
+(defonce xtract-bark-bands         (xtractConstants/XTRACT_BARK_BANDS))
+(defonce xtract-hann               (.swigValue (xtract_window_types_/XTRACT_HANN)))
+(defonce xtract-equal-gain         (.swigValue (xtract_mfcc_types_/XTRACT_EQUAL_GAIN)))
 (defonce xtract-spectrum-magnitude (.swigValue (xtract_spectrum_/XTRACT_MAGNITUDE_SPECTRUM)))
+(defonce xtract-linear-subbands    (.swigValue (xtract_subband_scales_/XTRACT_LINEAR_SUBBANDS)))
 
-(defonce xtract-linear-subbands  (.swigValue (xtract_subband_scales_/XTRACT_LINEAR_SUBBANDS)))
+(def MFCC_FREQ_BANDS    13)
+(def MFCC_FREQ_MIN      20)
+(def MFCC_FREQ_MAX      20000)
+(def NUM_HARMONICS      10)
+(def MFCC_FREQ_BANDS    13)
+(def DEFAULT_BLOCK_SIZE 512)
 
 (defn- double->clojure [vs len]
-  (let [ls (map-indexed
-            (fn [idx v] (xtract/double_array_getitem vs idx))
-            (range 0 len))]
-    ls))
+  (map-indexed
+   (fn [idx v] (xtract/double_array_getitem vs idx))
+   (range 0 len)))
 
 (defn- clojure->c-double [vs]
   (let [len (count vs)
@@ -106,19 +108,6 @@
       (xtract/xtract_free_window window)
       r)))
 
-(let [m (mean [1 2 4 8 10 12 14 16])
-      v (variance [1 2 4 8 10 12 14 16] (clojure->c-double [m]))
-      spec (spectrum [1 2 4 8 10 12 14 16] (/ 44100.0 8))
-      sub (features-from-subframes [1 2 4 8 10 12 14 16]
-                                   (/ 8 2)
-                                   xtract-hann)]
-
-  (println (str "Mean:" m))
-  (println (str "Var:" v))
-  (println (str "Spectrum: " (pr-str spec)))
-  (println (str "Features from subframes (window 4, hann): " (pr-str sub)))
-  )
-
 (defn sample-rate [sample-path]
   (let [file                 (io/file sample-path)
         base-file-format     (-> file  AudioSystem/getAudioFileFormat .getFormat)
@@ -134,13 +123,6 @@
   (let [cents (double-array 1)]
     (xtract/xtract_midicent nil 0 (xtract-args f0) cents)
     (first cents)))
-
-(def MFCC_FREQ_BANDS (double 13))
-(def MFCC_FREQ_MIN   (double 20))
-(def MFCC_FREQ_MAX   (double 20000))
-(def NUM_HARMONICS   10)
-(def MFCC_FREQ_BANDS 13)
-(def DEFAULT_BLOCK_SIZE 512)
 
 (defn peek-inside
   ([sample-path] (peek-inside sample-path DEFAULT_BLOCK_SIZE))
@@ -270,4 +252,21 @@
          (vec (flatten stats))
          )))))
 
-(doseq [r (peek-inside "test/fixtures/test.wav")] (println r))
+(comment
+
+  (doseq [r (peek-inside "test/fixtures/test.wav")]
+    (println r))
+
+  (let [m (mean [1 2 4 8 10 12 14 16])
+        v (variance [1 2 4 8 10 12 14 16] (clojure->c-double [m]))
+        spec (spectrum [1 2 4 8 10 12 14 16] (/ 44100.0 8))
+        sub (features-from-subframes [1 2 4 8 10 12 14 16]
+                                     (/ 8 2)
+                                     xtract-hann)]
+
+    (println (str "Mean:" m))
+    (println (str "Var:" v))
+    (println (str "Spectrum: " (pr-str spec)))
+    (println (str "Features from subframes (window 4, hann): " (pr-str sub)))
+    )
+  )
