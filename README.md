@@ -19,7 +19,11 @@ make
 
 ## Features of sound
 
-Data provided by `peek-inside` fn.
+¸.•*´¨`*•.¸¸.•*´¨`*•¸.•*´¨`*•¸.•*´¨`*•¸.•*´¨`*•.¸¸.•*´¨`*•.¸¸.•*´¨`*•.¸
+
+Data provided by `peek-inside` fn:
+
+
 
 `:f0`
 Fundamental frequency. The musical pitch of a note that is perceived as the lowest partial present.
