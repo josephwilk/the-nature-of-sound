@@ -227,6 +227,11 @@
                              ;;TODO
                              ;;(xtract/xtract_tonality      wav-data block-size (xtract-args ) tonality)
 
+                             ;;TODO: Correct to clean these here?
+                             (xtract/delete_double_array wav-data)
+                             (xtract/delete_double_array spectrum)
+                             (xtract/delete_double_array peaks)
+
                              {(* idx (int SAMPLE_RATE))
                               {:spectral-inharmonicity spectral-inharmonicity
                                :spectral-irregularity  (first spectral-irregularity)
