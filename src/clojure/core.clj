@@ -43,6 +43,14 @@
       vs))
     xtract-vs))
 
+(defn- c-double [len]
+  (let [xtract-vs (xtract/new_double-array len)]
+    (doall
+     (map-indexed
+      (fn [idx f] (xtract/double_array_setitem xtract-vs idx (double 0.0)))
+      (range 0 len)))
+    xtract-vs))
+
 (defn- xtract-args [& args] (xtract/doublea_to_voidp (clojure->c-double args)))
 
 (defn with-result [t xtract-fn]
@@ -162,92 +170,94 @@
                 (map
                  (fn [v]
                    (let [wav-data (clojure->c-double (vec v))
-                         f0    (extract-fundemental-frequency wav-data block-size SAMPLE_RATE)
-                         cents (frequency->cents f0)
-                         midi  (if (> f0 0.0)
-                                 (Integer/parseInt (format "%.0f" (/ cents 100)))
-                                 0)]
+                         f0       (extract-fundemental-frequency wav-data block-size SAMPLE_RATE)
+                         cents    (frequency->cents f0)
+                         midi     (if (> f0 0.0)
+                                    (Integer/parseInt (format "%.0f" (/ cents 100)))
+                                    0)
 
-                     (let [windowed (clojure->c-double (range 0 block-size))
-                           spectrum (clojure->c-double (range 0 block-size))]
-                       (xtract/xtract_windowed wav-data block-size (xtract/doublea_to_voidp full-window) windowed)
-                       (xtract/xtract_init_fft block-size xtract-spectrum)
-                       (xtract/xtract_spectrum windowed block-size (xtract-args SAMPLE_RATE_RATIO xtract-spectrum-magnitude 0.0 0.0)
-                                               spectrum)
-                       (xtract/xtract_free_fft)
+                         windowed (c-double block-size)
+                         spectrum (c-double block-size)
+                         peaks    (c-double block-size)]
 
-                       (let [peaks (clojure->c-double (range 0 block-size))]
-                         (xtract/xtract_peak_spectrum spectrum
-                                                      half-block-size
-                                                      (xtract-args SAMPLE_RATE_RATIO 10.0 0.0 0.0)
-                                                      peaks)
+                     (xtract/xtract_windowed wav-data block-size (xtract/doublea_to_voidp full-window) windowed)
+                     (xtract/xtract_init_fft block-size xtract-spectrum)
+                     (xtract/xtract_spectrum windowed block-size (xtract-args SAMPLE_RATE_RATIO xtract-spectrum-magnitude 0.0 0.0)
+                                             spectrum)
+                     (xtract/xtract_free_fft)
 
-                         (let [rms                   (double-array [0])
-                               spectral-irregularity (double-array [0])
-                               spectral-centroid     (double-array [0])
-                               spectral-variance     (double-array [0])
+                     (xtract/xtract_peak_spectrum spectrum
+                                                  half-block-size
+                                                  (xtract-args SAMPLE_RATE_RATIO 10.0 0.0 0.0)
+                                                  peaks)
 
-                               ;;TODO
-                               noiseness             (double-array [0])
-                               loudness              (double-array [0])
-                               tonality              (double-array [0])
+                     (let [rms                   (double-array [0])
+                           spectral-irregularity (double-array [0])
+                           spectral-centroid     (double-array [0])
+                           spectral-variance     (double-array [0])
 
-                               spectral-inharmonicity (spectral-inharmonicity
-                                                       peaks block-size
-                                                       f0 0.5 NUM_HARMONICS 0)]
+                           ;;TODO
+                           noiseness             (double-array [0])
+                           loudness              (double-array [0])
+                           tonality              (double-array [0])
 
-                           (xtract/xtract_rms_amplitude wav-data block-size (xtract-args SAMPLE_RATE_RATIO) rms)
+                           spectral-inharmonicity (spectral-inharmonicity
+                                                   peaks block-size
+                                                   f0 0.5 NUM_HARMONICS 0)]
 
-                           (xtract/xtract_spectral_centroid spectrum block-size (xtract-args 0.0) spectral-centroid)
-                           (xtract/xtract_irregularity_j    spectrum half-block-size nil spectral-irregularity)
+                       (xtract/xtract_rms_amplitude wav-data block-size (xtract-args SAMPLE_RATE_RATIO) rms)
 
-                           (let [spectral-skewness      (double-array [0])
-                                 spectral-std-deviation (double-array [0])
-                                 spectral-mean          (double-array [0])
-                                 spectral-kurtosis      (double-array [0])]
+                       (xtract/xtract_spectral_centroid spectrum block-size (xtract-args 0.0) spectral-centroid)
+                       (xtract/xtract_irregularity_j    spectrum half-block-size nil spectral-irregularity)
 
-                             (xtract/xtract_spectral_mean spectrum block-size nil spectral-mean)
-                             (xtract/xtract_variance spectrum block-size (xtract-args (first spectral-mean)) spectral-variance)
-                             (xtract/xtract_spectral_standard_deviation spectrum block-size (xtract-args (first spectral-variance)) spectral-std-deviation)
+                       (let [spectral-skewness      (double-array [0])
+                             spectral-std-deviation (double-array [0])
+                             spectral-mean          (double-array [0])
+                             spectral-kurtosis      (double-array [0])]
 
-                             (let [argv (xtract-args (first spectral-mean) (first spectral-std-deviation))]
-                               (xtract/xtract_spectral_skewness spectrum block-size argv spectral-skewness)
-                               (xtract/xtract_spectral_kurtosis spectrum block-size argv spectral-kurtosis))
+                         (xtract/xtract_spectral_mean spectrum block-size nil spectral-mean)
+                         (xtract/xtract_variance spectrum block-size (xtract-args (first spectral-mean)) spectral-variance)
+                         (xtract/xtract_spectral_standard_deviation spectrum block-size (xtract-args (first spectral-variance)) spectral-std-deviation)
 
-                             ;;(xtract/xtract_noisiness     wav-data block-size (xtract-args NUM_HARMONICS ) noiseness)
+                         (let [argv (xtract-args (first spectral-mean) (first spectral-std-deviation))]
+                           (xtract/xtract_spectral_skewness spectrum block-size argv spectral-skewness)
+                           (xtract/xtract_spectral_kurtosis spectrum block-size argv spectral-kurtosis))
 
-                             (let [_ 10
-                                   ;;bark-cofficents (clojure->c-double (range 0 xtract-bark-bands))
-                                   ]
+                         ;;(xtract/xtract_noisiness     wav-data block-size (xtract-args NUM_HARMONICS ) noiseness)
 
-                               ;;(xtract/xtract_bark_coefficients spectrum half-block-size (xtract-args ) bark-cofficents)
-                               ;;(xtract/xtract_loudness      wav-data block-size (apply xtract-args argv) loudness)
-                               )
+                         (let [_ 10
+                               ;;bark-cofficents (clojure->c-double (range 0 xtract-bark-bands))
+                               ]
 
-                             ;;TODO
-                             ;;(xtract/xtract_tonality      wav-data block-size (xtract-args ) tonality)
+                           ;;(xtract/xtract_bark_coefficients spectrum half-block-size (xtract-args ) bark-cofficents)
+                           ;;(xtract/xtract_loudness      wav-data block-size (apply xtract-args argv) loudness)
+                           )
 
-                             ;;TODO: Correct to clean these here?
-                             (xtract/delete_double_array wav-data)
-                             (xtract/delete_double_array spectrum)
-                             (xtract/delete_double_array peaks)
+                         ;;TODO
+                         ;;(xtract/xtract_tonality      wav-data block-size (xtract-args ) tonality)
 
-                             {(* idx (int SAMPLE_RATE))
-                              {:spectral-inharmonicity spectral-inharmonicity
-                               :spectral-irregularity  (first spectral-irregularity)
-                               :spectral-centroid      (first spectral-centroid)
-                               :spectral-skewness      (first spectral-skewness)
-                               :spectral-kurtosis      (first spectral-kurtosis)
-                               :rms-amplitude          (first rms)
+                         ;;TODO: More memory, probably slower... Re-using variables faster but sad
+                         (xtract/delete_double_array wav-data)
+                         (xtract/delete_double_array windowed)
+                         (xtract/delete_double_array spectrum)
+                         (xtract/delete_double_array peaks)
 
-                               :todo {:noisiness (first noiseness)
-                                      :loudness (first loudness)
-                                      :tonality (first tonality)}
-                               :midi midi
-                               :f0 f0}
-                              })))
-                       ;;(println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
-                       )))
+                         {(* idx (int SAMPLE_RATE))
+                          {:spectral-inharmonicity spectral-inharmonicity
+                           :spectral-irregularity  (first spectral-irregularity)
+                           :spectral-centroid      (first spectral-centroid)
+                           :spectral-skewness      (first spectral-skewness)
+                           :spectral-kurtosis      (first spectral-kurtosis)
+                           :rms-amplitude          (first rms)
+
+                           :todo {:noisiness (first noiseness)
+                                  :loudness (first loudness)
+                                  :tonality (first tonality)}
+                           :midi midi
+                           :f0 f0}
+                          }))
+                     ;;(println "Magnitude Spectrum: " (pr-str (double->clojure spectrum block-size)))
+                     ))
                  s))
               data-chunks)]
 
@@ -282,10 +292,11 @@
 
 (comment
 
-  (let [frame-stats (peek-inside "test/fixtures/test.wav")]
-    (doseq [frame frame-stats] (println frame))
-    (println :global (global-stats frame-stats))
-    )
+  (dotimes [i 1000000]
+    (let [frame-stats (peek-inside "test/fixtures/test.wav")]
+      ;;(doseq [frame frame-stats] (println frame))
+      (println :global (global-stats frame-stats))
+      ))
 
   (let [m (mean [1 2 4 8 10 12 14 16])
         v (variance [1 2 4 8 10 12 14 16] (clojure->c-double [m]))
