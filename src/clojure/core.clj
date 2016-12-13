@@ -264,9 +264,6 @@
         totals (reduce
                 (fn [acc frame]
                   (let [frame-stats (first (vals frame))]
-                    (println :frame frame-stats)
-                    (println fields)
-                    (println acc)
                     (reduce
                      (fn [local-acc field]
                        (let [v (get frame-stats field)]
