@@ -164,7 +164,9 @@
                    (let [wav-data (clojure->c-double (vec v))
                          f0    (extract-fundemental-frequency wav-data block-size SAMPLE_RATE)
                          cents (frequency->cents f0)
-                         midi  (format "%.0f" (/ cents 100))]
+                         midi  (if (> f0 0.0)
+                                 (Integer/parseInt (format "%.0f" (/ cents 100)))
+                                 0)]
 
                      (let [windowed (clojure->c-double (range 0 block-size))
                            spectrum (clojure->c-double (range 0 block-size))]
@@ -226,12 +228,12 @@
                              ;;(xtract/xtract_tonality      wav-data block-size (xtract-args ) tonality)
 
                              {(* idx (int SAMPLE_RATE))
-                              {:spectral-inharmonicit  spectral-inharmonicity
+                              {:spectral-inharmonicity spectral-inharmonicity
                                :spectral-irregularity  (first spectral-irregularity)
                                :spectral-centroid      (first spectral-centroid)
                                :spectral-skewness      (first spectral-skewness)
                                :spectral-kurtosis      (first spectral-kurtosis)
-                               :rms_amplitude          (first rms)
+                               :rms-amplitude          (first rms)
 
                                :todo {:noisiness (first noiseness)
                                       :loudness (first loudness)
@@ -251,10 +253,37 @@
          (vec (flatten stats))
          )))))
 
+(defn global-stats [frame-stats]
+  (let [n (count frame-stats)
+        fields (-> frame-stats first vals first (dissoc :todo) keys)
+        totals (reduce
+                (fn [acc frame]
+                  (let [frame-stats (first (vals frame))]
+                    (println :frame frame-stats)
+                    (println fields)
+                    (println acc)
+                    (reduce
+                     (fn [local-acc field]
+                       (let [v (get frame-stats field)]
+                         (assoc local-acc field
+                                (+ (get local-acc field 0.0)
+                                   v))))
+                     acc
+                     fields)))
+                {}
+                frame-stats)]
+
+    (-> {}
+        (assoc :rms-amplitude-mean (/ (:rms-amplitude totals) n))
+        (assoc :spectral-centroid-mean (/ (:spectral-centroid totals) n)))
+    ))
+
 (comment
 
-  (doseq [r (peek-inside "test/fixtures/test.wav")]
-    (println r))
+  (let [frame-stats (peek-inside "test/fixtures/test.wav")]
+    (doseq [frame frame-stats] (println frame))
+    (println :global (global-stats frame-stats))
+    )
 
   (let [m (mean [1 2 4 8 10 12 14 16])
         v (variance [1 2 4 8 10 12 14 16] (clojure->c-double [m]))
