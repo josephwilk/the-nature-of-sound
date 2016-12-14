@@ -133,12 +133,14 @@
         file-sample-rate     (.getSampleRate base-file-format)]
     file-sample-rate))
 
-(defn extract-fundemental-frequency [wave-data block-size sample-rate]
+(defn extract-fundemental-frequency
+  [wave-data block-size sample-rate]
     (let [r (double-array 1)]
       (xtract/xtract_wavelet_f0 wave-data block-size (xtract-args sample-rate) r)
       (first r)))
 
 (defn extract-spectrum
+  "Extract frequency domain spectrum from time domain signal"
   ([windowed-data block-size sample-ratio spectrum-type]
    (extract-spectrum windowed-data block-size sample-ratio spectrum-type 0.0 0.0))
   ([windowed-data block-size sample-ratio spectrum-type db-component normalised]
@@ -156,7 +158,6 @@
   (let [windowed (c-double block-size)]
     (xtract/xtract_windowed wave-data block-size (xtract/doublea_to_voidp full-window) windowed)
     (xtract/xtract_init_fft block-size xtract-spectrum)
-
     (let [spectrum (extract-spectrum windowed block-size (/ sample-rate block-size) xtract-spectrum-magnitude)]
       (xtract/xtract_free_fft)
       (xtract/delete_double_array windowed)
@@ -171,6 +172,13 @@
                                  (xtract-args sample-ratio peak-threshold)
                                  peaks)
     peaks))
+
+(defn extract-rms-amp
+  "Extract the RMS amplitude"
+  [wav-data block-size sample-ratio]
+  (let [rms (double-array 1)]
+    (xtract/xtract_rms_amplitude wav-data block-size (xtract-args sample-ratio) rms)
+    rms))
 
 (defn raise-errors [result]
     (cond
@@ -237,10 +245,12 @@
                                  (Integer/parseInt (format "%.0f" (/ cents 100)))
                                  0)
 
-                      spectrum (extract-fft-spectrum wav-data block-size SAMPLE_RATE full-window)
-                      peaks (extract-peaks spectrum block-size SAMPLE_RATE_RATIO 10.0)
+                      spectrum               (extract-fft-spectrum wav-data block-size SAMPLE_RATE full-window)
+                      peaks                  (extract-peaks spectrum block-size SAMPLE_RATE_RATIO 10.0)
+                      spectral-inharmonicity (spectral-inharmonicity peaks block-size f0 0.5 NUM_HARMONICS 0)
 
-                      rms                   (double-array [0])
+                      rms                    (extract-rms-amp wav-data block-size SAMPLE_RATE_RATIO)
+
                       spectral-irregularity (double-array [0])
                       spectral-centroid     (double-array [0])
                       spectral-variance     (double-array [0])
@@ -248,13 +258,9 @@
                       ;;TODO
                       noiseness             (double-array [0])
                       loudness              (double-array [0])
-                      tonality              (double-array [0])
+                      tonality              (double-array [0])]
 
-                      spectral-inharmonicity (spectral-inharmonicity
-                                              peaks block-size
-                                              f0 0.5 NUM_HARMONICS 0)]
 
-                  (xtract/xtract_rms_amplitude wav-data block-size (xtract-args SAMPLE_RATE_RATIO) rms)
 
                   (xtract/xtract_spectral_centroid spectrum block-size (xtract-args 0.0) spectral-centroid)
                   (xtract/xtract_irregularity_j    spectrum half-block-size nil spectral-irregularity)
