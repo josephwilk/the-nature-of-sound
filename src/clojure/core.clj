@@ -138,10 +138,21 @@
     (xtract/xtract_wavelet_f0 wave-data block-size (xtract-args sample-rate) r)
     (first r)))
 
+(defn raise-errors [result]
+    (cond
+      (= result xtract-success)        true
+      (= result xtract-bad-argv)       (throw (Exception. "Bad argv error"))
+      (= result xtract-argument-error) (throw (Exception. "Bad arguments error"))
+      true (throw (Exception. "Unknown result type"))))
+
 (defn frequency->cents [f0]
-  (let [cents (double-array 1)]
-    (xtract/xtract_midicent nil 0 (xtract-args f0) cents)
-    (first cents)))
+  (if (= 0.0 f0)
+    0.0
+    (let [cents (double-array 1)]
+      (let [r (xtract/xtract_midicent nil 0 (xtract-args f0) cents)]
+        (raise-errors r)
+        (first cents)))))
+
 
 (defn peek-inside
   ([sample-path] (peek-inside sample-path DEFAULT_BLOCK_SIZE))
