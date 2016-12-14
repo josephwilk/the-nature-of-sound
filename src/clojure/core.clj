@@ -8,6 +8,7 @@
            [xtract_window_types_]
            [xtract_spectrum_]
            [xtract_subband_scales_]
+           [xtract_return_codes_]
            [xtractConstants]
 
           [javax.sound.sampled AudioSystem]))
@@ -21,6 +22,16 @@
 (defonce xtract-equal-gain         (.swigValue (xtract_mfcc_types_/XTRACT_EQUAL_GAIN)))
 (defonce xtract-spectrum-magnitude (.swigValue (xtract_spectrum_/XTRACT_MAGNITUDE_SPECTRUM)))
 (defonce xtract-linear-subbands    (.swigValue (xtract_subband_scales_/XTRACT_LINEAR_SUBBANDS)))
+
+(defonce xtract-success           (.swigValue (xtract_return_codes_/XTRACT_SUCCESS)))
+(defonce xtract-malloc-fail       (.swigValue (xtract_return_codes_/XTRACT_MALLOC_FAILED)))
+(defonce xtract-bad-argv          (.swigValue (xtract_return_codes_/XTRACT_BAD_ARGV)))
+(defonce xtract-bad-vec-size      (.swigValue (xtract_return_codes_/XTRACT_BAD_VECTOR_SIZE)))
+(defonce xtract-bad-state         (.swigValue (xtract_return_codes_/XTRACT_BAD_STATE)))
+(defonce xtract-denormal-found    (.swigValue (xtract_return_codes_/XTRACT_DENORMAL_FOUND)))
+(defonce xtract-no-result         (.swigValue (xtract_return_codes_/XTRACT_NO_RESULT)))
+(defonce xtract-feature-not-found (.swigValue (xtract_return_codes_/XTRACT_FEATURE_NOT_IMPLEMENTED)))
+(defonce xtract-argument-error    (.swigValue (xtract_return_codes_/XTRACT_ARGUMENT_ERROR)))
 
 (def MFCC_FREQ_BANDS    13)
 (def MFCC_FREQ_MIN      20)
