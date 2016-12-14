@@ -134,9 +134,33 @@
     file-sample-rate))
 
 (defn extract-fundemental-frequency [wave-data block-size sample-rate]
-  (let [r (double-array 1)]
-    (xtract/xtract_wavelet_f0 wave-data block-size (xtract-args sample-rate) r)
-    (first r)))
+    (let [r (double-array 1)]
+      (xtract/xtract_wavelet_f0 wave-data block-size (xtract-args sample-rate) r)
+      (first r)))
+
+(defn extract-spectrum
+  ([windowed-data block-size sample-ratio spectrum-type]
+   (extract-spectrum windowed-data block-size sample-ratio spectrum-type 0.0 0.0))
+  ([windowed-data block-size sample-ratio spectrum-type db-component normalised]
+
+   (let [spectrum (c-double block-size)]
+     (xtract/xtract_spectrum windowed-data
+                             block-size (xtract-args sample-ratio
+                                                     spectrum-type
+                                                     db-component
+                                                     normalised)
+                             spectrum)
+     spectrum)))
+
+(defn extract-fft-spectrum [wave-data block-size sample-rate full-window]
+  (let [windowed (c-double block-size)]
+    (xtract/xtract_windowed wave-data block-size (xtract/doublea_to_voidp full-window) windowed)
+    (xtract/xtract_init_fft block-size xtract-spectrum)
+
+    (let [spectrum (extract-spectrum windowed block-size (/ sample-rate block-size) xtract-spectrum-magnitude)]
+      (xtract/xtract_free_fft)
+      (xtract/delete_double_array windowed)
+      spectrum)))
 
 (defn raise-errors [result]
     (cond
@@ -202,20 +226,9 @@
                       midi     (if (> f0 0.0)
                                  (Integer/parseInt (format "%.0f" (/ cents 100)))
                                  0)
-
-                      windowed (c-double block-size)
-                      spectrum (c-double block-size)
                       peaks    (c-double block-size)
 
-                      wa (c-double 1)]
-
-                  ;;(xtract/double_array_setitem wa 0 0.0)
-
-                  (xtract/xtract_windowed wav-data block-size (xtract/doublea_to_voidp full-window) windowed)
-                  (xtract/xtract_init_fft block-size xtract-spectrum)
-                  (xtract/xtract_spectrum windowed block-size (xtract-args SAMPLE_RATE_RATIO xtract-spectrum-magnitude 0.0 0.0)
-                                          spectrum)
-                  (xtract/xtract_free_fft)
+                      spectrum (extract-fft-spectrum wav-data block-size SAMPLE_RATE full-window)]
 
                   (xtract/xtract_peak_spectrum spectrum
                                                half-block-size
@@ -269,7 +282,6 @@
 
                       ;;TODO: More memory, probably slower... Re-using variables faster but sad
                       (xtract/delete_double_array wav-data)
-                      (xtract/delete_double_array windowed)
                       (xtract/delete_double_array spectrum)
                       (xtract/delete_double_array peaks)
 
