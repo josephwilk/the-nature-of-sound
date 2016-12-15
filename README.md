@@ -2,6 +2,22 @@
 
 Using samples to create music you quickly learn the power of manipulating, splicing, reversing & chopping, turning a fixed sample into something dynamic. This leads quickly to an understanding that samples are data. The more we understand this data the more we increase the flexibility of the sample as an instrument. That is the goal of this project. 
 
+>"Sound is a mechanical, longitudinal wave."
+
+>"Sound is produced by small and rapid pressure changes."
+
+>"The speed of sound depends upon the medium and its state."
+
+>"The amplitude of a sound wave corresponds to its intensity or loudness."
+
+>"The frequency of a sound wave corresponds to its pitch."
+
+>"Wavelength is inversely proportional to frequency"
+
+>"The ability of an animal or electronic sensor to identify the location or direction of origin of a sound is known as sound localization."
+
+The Physics hypertextbook "http://physics.info/sound/summary.shtml" "The nature of sound"
+
 ## Build
 
 Only tested on Mac. Requires the compilation of c++ Xtract lib.
