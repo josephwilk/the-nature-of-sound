@@ -31,8 +31,8 @@ make
 ```clojure
 (require '[the-nature-of-sound.core :as nos])
 (let [block-size 512
-      frame-stats (nos/frame-stats "test/fixtures/test.wav" block-size)]
-  (println (nos/global-stats frame-stats)))
+      block-stats (nos/block-stats "test/fixtures/test.wav" block-size)]
+  (println (nos/global-stats block-stats)))
 ```
 
 ## Features of sound
