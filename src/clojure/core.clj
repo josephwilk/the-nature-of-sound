@@ -202,8 +202,8 @@
         (first cents)))))
 
 
-(defn peek-inside
-  ([sample-path] (peek-inside sample-path DEFAULT_BLOCK_SIZE))
+(defn frame-stats
+  ([sample-path] (frame-stats sample-path DEFAULT_BLOCK_SIZE))
   ([sample-path block-size]
 
    (let [SAMPLE_RATE (sample-rate sample-path)
@@ -370,19 +370,10 @@
         (assoc :f0-mean   (/ (:f0 f0-totals) n-f0s))
         )))
 
-  (dotimes [i 1]
-    (let [frame-stats (peek-inside "test/fixtures/test.wav")]
-;;      (doseq [frame frame-stats] (println frame))
-
-
-      (println :global (global-stats frame-stats))
-      ))
-
 (comment
-
   (dotimes [i 1]
-    (lDet [frame-stats (peek-inside "test/fixtures/test.wav")]
-      ;;(doseq [frame frame-stats] (println frame))
+    (let [frame-stats (frame-stats "test/fixtures/test.wav")]
+      (doseq [frame frame-stats] (println frame))
       (println :global (global-stats frame-stats))
       ))
 
