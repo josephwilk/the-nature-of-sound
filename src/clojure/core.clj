@@ -358,24 +358,26 @@
         n-f0s (count f0-frames)
         f0-totals (reduce (global-stats-reduce fields) {} f0-frames)]
 
-    (-> {}
-        (assoc :rms-amplitude-mean          (/ (:rms-amplitude totals) n))
-        (assoc :spectral-centroid-mean      (/ (:spectral-centroid totals) n))
-        (assoc :spectral-irregularity-mean  (/ (:spectral-irregularity totals) n))
-        (assoc :spectral-kurtosis-mean      (/ (:spectral-kurtosis totals) n))
+    (let [means
+          (-> {}
+              (assoc :rms-amplitude          (/ (:rms-amplitude totals) n))
+              (assoc :spectral-centroid      (/ (:spectral-centroid totals) n))
+              (assoc :spectral-irregularity  (/ (:spectral-irregularity totals) n))
+              (assoc :spectral-kurtosis      (/ (:spectral-kurtosis totals) n))
 
-        ;;Only over non 0 frequencies
-        (assoc :spectral-inharmonicity-mean (/ (:spectral-inharmonicity f0-totals) n-f0s))
-        (assoc :midi-mean (/ (:midi f0-totals) n-f0s))
-        (assoc :f0-mean   (/ (:f0 f0-totals) n-f0s))
-        )))
+              ;;Only over non 0 frequencies
+              (assoc :spectral-inharmonicity (/ (:spectral-inharmonicity f0-totals) n-f0s))
+              (assoc :midi (/ (:midi f0-totals) n-f0s))
+              (assoc :f0   (/ (:f0 f0-totals) n-f0s)))]
+      {:mean means}
+  )))
 
 
 (comment
   (dotimes [i 1]
     (let [block-stats (block-stats "test/fixtures/test.wav")]
       (doseq [frame block-stats] (println frame))
-      (println :global (global-stats frame-stats))
+      (println :global (global-stats block-stats))
       ))
 
   (let [m (mean [1 2 4 8 10 12 14 16])
