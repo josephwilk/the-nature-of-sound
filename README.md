@@ -37,7 +37,7 @@ make
 
 ## Features of sound
 
-Data provided by `peek-inside` fn:
+Data provided. Either per block or globally:
 
 ¸.•*´¨`*•.¸¸.•*´¨`*•¸.•*´¨`*•¸.•*´¨`*•¸.•*´¨`*•.¸¸.•*´¨`*•.¸¸.•*´¨`*•.¸
 
