@@ -202,8 +202,8 @@
         (first cents)))))
 
 
-(defn frame-stats
-  ([sample-path] (frame-stats sample-path DEFAULT_BLOCK_SIZE))
+(defn block-stats
+  ([sample-path] (block-stats sample-path DEFAULT_BLOCK_SIZE))
   ([sample-path block-size]
 
    (let [SAMPLE_RATE (sample-rate sample-path)
@@ -370,10 +370,11 @@
         (assoc :f0-mean   (/ (:f0 f0-totals) n-f0s))
         )))
 
+
 (comment
   (dotimes [i 1]
-    (let [frame-stats (frame-stats "test/fixtures/test.wav")]
-      (doseq [frame frame-stats] (println frame))
+    (let [block-stats (block-stats "test/fixtures/test.wav")]
+      (doseq [frame block-stats] (println frame))
       (println :global (global-stats frame-stats))
       ))
 
