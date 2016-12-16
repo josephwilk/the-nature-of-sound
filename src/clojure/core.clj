@@ -1,6 +1,6 @@
 (ns the-nature-of-sound.core
   (:require [clojure.java.io :as io]
-            [dynne.sampled-sound :as sample])
+            [dynne.sampled-sound :as ssample])
   (:import [xtract]
            [xtractJNI]
            [xtract_mel_filter]
@@ -50,7 +50,7 @@
         xtract-vs (xtract/new_double-array len)]
     (doall
      (map-indexed
-      (fn [idx f] (xtract/double_array_setitem xtract-vs idx (double f)))
+      (fn [idx v] (xtract/double_array_setitem xtract-vs idx v))
       vs))
     xtract-vs))
 
@@ -64,16 +64,12 @@
 
 (defn- xtract-args [& args] (xtract/doublea_to_voidp (clojure->c-double args)))
 
-(defn with-result [t xtract-fn]
-  (let [r t]
-    (xtract-fn r)
-    (let [out (nth (vec r) 0)]
-      out)))
-
-(defn spectral-inharmonicity [peaks-data block-size & args]
-  (with-result
-    (double-array [0])
-    (fn [r] (xtract/xtract_spectral_inharmonicity peaks-data block-size (apply xtract-args args) r))))
+(defn with-result
+  ([xtract-fn] (with-result (double-array [0]) xtract-fn))
+  ([r xtract-fn]
+   (xtract-fn r)
+   (first (vec r))
+   ))
 
 (defn mean [vs]
   (let [result (double-array 1)
@@ -133,11 +129,21 @@
         file-sample-rate     (.getSampleRate base-file-format)]
     file-sample-rate))
 
-(defn extract-fundemental-frequency
-  [wave-data block-size sample-rate]
-    (let [r (double-array 1)]
-      (xtract/xtract_wavelet_f0 wave-data block-size (xtract-args sample-rate) r)
-      (first r)))
+(defn extract-spectral-inharmonicity
+  [peaks-data block-size f0]
+  (if (> f0 0.0)
+    (with-result
+      (fn [r] (xtract/xtract_spectral_inharmonicity peaks-data block-size (xtract-args f0) r)))
+    0.0))
+
+(defn extract-fundemental-frequency [wav-data block-size sample-rate]
+  (let [r (double-array 1)]
+    (xtract/xtract_wavelet_f0 wav-data block-size (xtract-args sample-rate) r)
+
+;;    (when (> (first r) 0.0) (println :---------------------> (first r)))
+    (first r)
+    )
+)
 
 (defn extract-spectrum
   "Extract frequency domain spectrum from time domain signal"
@@ -174,7 +180,7 @@
     peaks))
 
 (defn extract-rms-amp
-  "Extract the RMS amplitude"
+  "Extract the RMS amplitude of an input vector"
   [wav-data block-size sample-ratio]
   (let [rms (double-array 1)]
     (xtract/xtract_rms_amplitude wav-data block-size (xtract-args sample-ratio) rms)
@@ -204,13 +210,12 @@
          half-block-size (/ block-size 2)
          SAMPLE_RATE_RATIO (/ SAMPLE_RATE block-size)
 
-         s           (ssample/read-sound sample-path block-size)
+         s           (ssample/read-sound sample-path)
          data-chunks (ssample/chunks s SAMPLE_RATE)
          ;;TODO: Merging channels?
          ;;with sliding window, overlap
-         data (partition block-size half-block-size (mapcat (fn [bit] bit) (flatten (flatten ch))))         ;;seperate
-         ;;data (partition block-size (mapcat (fn [bit] bit) (flatten (flatten ch))))
-
+         data (partition block-size half-block-size (mapcat (fn [bit] bit) (flatten (flatten data-chunks))))         ;;seperate
+         ;;data (partition block-size (mapcat (fn [bit] bit) (flatten (flatten data-chunks))))
          mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)
 
          ;;bark-band-limits (xtract/new_int_array 0)
@@ -225,7 +230,6 @@
                               MFCC_FREQ_BANDS
                               (xtract_mel_filter/.getFilters mel-filters))
 
-     (xtract/xtract_init_wavelet_f0_state)
 
      ;;public static int xtract_init_bark(int N, double sr, SWIGTYPE_p_int band_limits) {
      ;;(xtract/xtract_init_bark block-size SAMPLERATE bark-band-limits)
@@ -234,10 +238,14 @@
      (let [full-window (xtract/xtract_init_window block-size xtract-hann)
            half-window (xtract/xtract_init_window half-block-size xtract-hann)]
 
+       (xtract/xtract_init_wavelet_f0_state)
+
        (let [stats
              (map-indexed
               (fn [idx v]
 
+
+;;                (println v)
                 (let [wav-data (clojure->c-double v)
                       f0       (extract-fundemental-frequency wav-data block-size SAMPLE_RATE)
                       cents    (frequency->cents f0)
@@ -247,7 +255,7 @@
 
                       spectrum               (extract-fft-spectrum wav-data block-size SAMPLE_RATE full-window)
                       peaks                  (extract-peaks spectrum block-size SAMPLE_RATE_RATIO 10.0)
-                      spectral-inharmonicity (spectral-inharmonicity peaks block-size f0 0.5 NUM_HARMONICS 0)
+                      spectral-inharmonicity (extract-spectral-inharmonicity peaks block-size f0)
 
                       rms                    (extract-rms-amp wav-data block-size SAMPLE_RATE_RATIO)
 
@@ -322,32 +330,58 @@
          (vec (flatten stats))
          )))))
 
+
+(defn global-stats-reduce [fields]
+  (fn [acc frame]
+    (let [frame-stats (first (vals frame))]
+      (reduce
+       (fn [local-acc field]
+         (let [v (get frame-stats field)
+               v (if (and (= (type v) Double) (.isNaN v))
+                   0.0
+                   v)]
+
+           (assoc local-acc field
+                  (+ (get local-acc field 0.0)
+                     v))))
+       acc
+       fields))))
+
 (defn global-stats [frame-stats]
   (let [n (count frame-stats)
         fields (-> frame-stats first vals first (dissoc :todo) keys)
-        totals (reduce
-                (fn [acc frame]
-                  (let [frame-stats (first (vals frame))]
-                    (reduce
-                     (fn [local-acc field]
-                       (let [v (get frame-stats field)]
-                         (assoc local-acc field
-                                (+ (get local-acc field 0.0)
-                                   v))))
-                     acc
-                     fields)))
-                {}
-                frame-stats)]
+        totals (reduce (global-stats-reduce fields) {} frame-stats)
+
+        f0-frames (remove (fn [frame] (let [stats (first (vals frame))]
+                                        (= (:f0 stats) 0.0)
+                                       )) frame-stats)
+        n-f0s (count f0-frames)
+        f0-totals (reduce (global-stats-reduce fields) {} f0-frames)]
 
     (-> {}
-        (assoc :rms-amplitude-mean (/ (:rms-amplitude totals) n))
-        (assoc :spectral-centroid-mean (/ (:spectral-centroid totals) n)))
-    ))
+        (assoc :rms-amplitude-mean          (/ (:rms-amplitude totals) n))
+        (assoc :spectral-centroid-mean      (/ (:spectral-centroid totals) n))
+        (assoc :spectral-irregularity-mean  (/ (:spectral-irregularity totals) n))
+        (assoc :spectral-kurtosis-mean      (/ (:spectral-kurtosis totals) n))
+
+        ;;Only over non 0 frequencies
+        (assoc :spectral-inharmonicity-mean (/ (:spectral-inharmonicity f0-totals) n-f0s))
+        (assoc :midi-mean (/ (:midi f0-totals) n-f0s))
+        (assoc :f0-mean   (/ (:f0 f0-totals) n-f0s))
+        )))
+
+  (dotimes [i 1]
+    (let [frame-stats (peek-inside "test/fixtures/test.wav")]
+;;      (doseq [frame frame-stats] (println frame))
+
+
+      (println :global (global-stats frame-stats))
+      ))
 
 (comment
 
-  (dotimes [i 1000000]
-    (let [frame-stats (peek-inside "test/fixtures/test.wav")]
+  (dotimes [i 1]
+    (lDet [frame-stats (peek-inside "test/fixtures/test.wav")]
       ;;(doseq [frame frame-stats] (println frame))
       (println :global (global-stats frame-stats))
       ))
