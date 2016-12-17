@@ -172,6 +172,7 @@
 
 (defn extract-fft-spectrum [wave-data block-size sample-rate full-window]
   (let [windowed (c-double block-size)]
+    ;;NOTE: I'm not convienced the full-window parameter is being used.
     (raise-errors
      (xtract/xtract_windowed wave-data block-size (xtract/doublea_to_voidp full-window) windowed))
     (raise-errors
@@ -221,15 +222,9 @@
 
          s           (ssample/read-sound sample-path)
          data-chunks (ssample/chunks s SAMPLE_RATE)
-         ;;TODO: Merging channels?
-         ;;with sliding window, overlap
-         data (partition block-size half-block-size (mapcat (fn [bit] bit) (flatten (flatten data-chunks))))         ;;seperate
-         ;;data (partition block-size (mapcat (fn [bit] bit) (flatten (flatten data-chunks))))
-         mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)
-
-         ;;bark-band-limits (xtract/new_int_array 0)
-         ;;  _ (xtract/int_array_setitem bark-band-limits 0 0)
-         ]
+         ;;data (partition block-size half-block-size (mapcat (fn [bit] bit) (flatten (flatten data-chunks))))         ;;seperate
+         data (partition block-size (mapcat (fn [bit] bit) (flatten (flatten data-chunks))))
+         mel-filters  (xtract/create_filterbank  MFCC_FREQ_BANDS block-size)]
 
      (raise-errors
       (xtract/xtract_init_mfcc half-block-size
@@ -239,7 +234,6 @@
                                MFCC_FREQ_MAX
                                MFCC_FREQ_BANDS
                                (xtract_mel_filter/.getFilters mel-filters)))
-
 
      ;;public static int xtract_init_bark(int N, double sr, SWIGTYPE_p_int band_limits) {
      ;;(xtract/xtract_init_bark block-size SAMPLERATE bark-band-limits)
@@ -377,6 +371,7 @@
               (assoc :spectral-centroid      (/ (:spectral-centroid totals) n))
               (assoc :spectral-irregularity  (/ (:spectral-irregularity totals) n))
               (assoc :spectral-kurtosis      (/ (:spectral-kurtosis totals) n))
+              (assoc :spectral-skewness      (/ (:spectral-skewness totals) n))
 
               ;;Only over non 0 frequencies
               (assoc :spectral-inharmonicity (/ (:spectral-inharmonicity f0-totals) n-f0s))
@@ -384,13 +379,6 @@
               (assoc :f0   (/ (:f0 f0-totals) n-f0s)))]
       {:mean means}
   )))
-
-
-
-    (let [block-stats (block-stats "test/fixtures/test.wav")]
-;;      (doseq [frame block-stats] (println frame))
-      (println :global (global-stats block-stats))
-      )
 
 (comment
   (dotimes [i 1]
