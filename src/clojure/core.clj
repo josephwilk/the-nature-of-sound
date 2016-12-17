@@ -40,6 +40,18 @@
 (def MFCC_FREQ_BANDS    13)
 (def DEFAULT_BLOCK_SIZE 512)
 
+(defn raise-errors [result]
+  (when result
+    (cond
+      (= result xtract-success)        true
+      (= result xtract-no-result)      (do ;;(println :no-result)
+                                         true)
+      (= result xtract-bad-argv)       (throw (Exception. "Bad argv error"))
+      (= result xtract-argument-error) (throw (Exception. "Bad arguments error"))
+      (= result xtract-bad-vec-size)   (throw (Exception. "Bad vector size"))
+      (= result xtract-bad-state)      (throw (Exception. "Bad state"))
+      true (throw (Exception. (str "Unknown result type:" result))))))
+
 (defn- double->clojure [vs len]
   (map-indexed
    (fn [idx v] (xtract/double_array_getitem vs idx))
@@ -138,12 +150,9 @@
 
 (defn extract-fundemental-frequency [wav-data block-size sample-rate]
   (let [r (double-array 1)]
-    (xtract/xtract_wavelet_f0 wav-data block-size (xtract-args sample-rate) r)
-
-;;    (when (> (first r) 0.0) (println :---------------------> (first r)))
-    (first r)
-    )
-)
+    (raise-errors
+     (xtract/xtract_wavelet_f0 wav-data block-size (xtract-args sample-rate) r))
+    (first r)))
 
 (defn extract-spectrum
   "Extract frequency domain spectrum from time domain signal"
@@ -152,46 +161,46 @@
   ([windowed-data block-size sample-ratio spectrum-type db-component normalised]
 
    (let [spectrum (c-double block-size)]
-     (xtract/xtract_spectrum windowed-data
-                             block-size (xtract-args sample-ratio
-                                                     spectrum-type
-                                                     db-component
-                                                     normalised)
-                             spectrum)
+     (raise-errors
+      (xtract/xtract_spectrum windowed-data
+                              block-size (xtract-args sample-ratio
+                                                      spectrum-type
+                                                      db-component
+                                                      normalised)
+                              spectrum))
      spectrum)))
 
 (defn extract-fft-spectrum [wave-data block-size sample-rate full-window]
   (let [windowed (c-double block-size)]
-    (xtract/xtract_windowed wave-data block-size (xtract/doublea_to_voidp full-window) windowed)
-    (xtract/xtract_init_fft block-size xtract-spectrum)
+    (raise-errors
+     (xtract/xtract_windowed wave-data block-size (xtract/doublea_to_voidp full-window) windowed))
+    (raise-errors
+     (xtract/xtract_init_fft block-size xtract-spectrum))
     (let [spectrum (extract-spectrum windowed block-size (/ sample-rate block-size) xtract-spectrum-magnitude)]
-      (xtract/xtract_free_fft)
-      (xtract/delete_double_array windowed)
+      (raise-errors
+       (xtract/xtract_free_fft))
+      (raise-errors
+       (xtract/delete_double_array windowed))
       spectrum)))
 
 (defn extract-peaks
   "Extract the amplitude and frequency of spectral peaks from a magnitude spectrum"
   [coefficients block-size sample-ratio peak-threshold]
   (let [peaks (c-double block-size)]
-    (xtract/xtract_peak_spectrum coefficients
-                                 (/ block-size 2)
-                                 (xtract-args sample-ratio peak-threshold)
-                                 peaks)
+    (raise-errors
+     (xtract/xtract_peak_spectrum coefficients
+                                  (/ block-size 2)
+                                  (xtract-args sample-ratio peak-threshold)
+                                  peaks))
     peaks))
 
 (defn extract-rms-amp
   "Extract the RMS amplitude of an input vector"
   [wav-data block-size sample-ratio]
   (let [rms (double-array 1)]
-    (xtract/xtract_rms_amplitude wav-data block-size (xtract-args sample-ratio) rms)
+    (raise-errors
+     (xtract/xtract_rms_amplitude wav-data block-size (xtract-args sample-ratio) rms))
     rms))
-
-(defn raise-errors [result]
-    (cond
-      (= result xtract-success)        true
-      (= result xtract-bad-argv)       (throw (Exception. "Bad argv error"))
-      (= result xtract-argument-error) (throw (Exception. "Bad arguments error"))
-      true (throw (Exception. "Unknown result type"))))
 
 (defn frequency->cents [f0]
   (if (= 0.0 f0)
@@ -222,13 +231,14 @@
          ;;  _ (xtract/int_array_setitem bark-band-limits 0 0)
          ]
 
-     (xtract/xtract_init_mfcc half-block-size
-                              (/ SAMPLE_RATE 2)
-                              xtract-equal-gain
-                              MFCC_FREQ_MIN
-                              MFCC_FREQ_MAX
-                              MFCC_FREQ_BANDS
-                              (xtract_mel_filter/.getFilters mel-filters))
+     (raise-errors
+      (xtract/xtract_init_mfcc half-block-size
+                               (/ SAMPLE_RATE 2)
+                               xtract-equal-gain
+                               MFCC_FREQ_MIN
+                               MFCC_FREQ_MAX
+                               MFCC_FREQ_BANDS
+                               (xtract_mel_filter/.getFilters mel-filters)))
 
 
      ;;public static int xtract_init_bark(int N, double sr, SWIGTYPE_p_int band_limits) {
@@ -238,14 +248,12 @@
      (let [full-window (xtract/xtract_init_window block-size xtract-hann)
            half-window (xtract/xtract_init_window half-block-size xtract-hann)]
 
-       (xtract/xtract_init_wavelet_f0_state)
+       (raise-errors
+        (xtract/xtract_init_wavelet_f0_state))
 
        (let [stats
              (map-indexed
               (fn [idx v]
-
-
-;;                (println v)
                 (let [wav-data (clojure->c-double v)
                       f0       (extract-fundemental-frequency wav-data block-size SAMPLE_RATE)
                       cents    (frequency->cents f0)
@@ -268,23 +276,28 @@
                       loudness              (double-array [0])
                       tonality              (double-array [0])]
 
-
-
-                  (xtract/xtract_spectral_centroid spectrum block-size (xtract-args 0.0) spectral-centroid)
-                  (xtract/xtract_irregularity_j    spectrum half-block-size nil spectral-irregularity)
+                  (raise-errors
+                   (xtract/xtract_spectral_centroid spectrum block-size (xtract-args 0.0) spectral-centroid))
+                  (raise-errors
+                   (xtract/xtract_irregularity_j    spectrum half-block-size nil spectral-irregularity))
 
                   (let [spectral-skewness      (double-array [0])
                         spectral-std-deviation (double-array [0])
                         spectral-mean          (double-array [0])
                         spectral-kurtosis      (double-array [0])]
 
-                    (xtract/xtract_spectral_mean spectrum block-size nil spectral-mean)
-                    (xtract/xtract_variance spectrum block-size (xtract-args (first spectral-mean)) spectral-variance)
-                    (xtract/xtract_spectral_standard_deviation spectrum block-size (xtract-args (first spectral-variance)) spectral-std-deviation)
+                    (raise-errors
+                     (xtract/xtract_spectral_mean spectrum block-size nil spectral-mean))
+                    (raise-errors
+                     (xtract/xtract_variance spectrum block-size (xtract-args (first spectral-mean)) spectral-variance))
+                    (raise-errors
+                     (xtract/xtract_spectral_standard_deviation spectrum block-size (xtract-args (first spectral-variance)) spectral-std-deviation))
 
                     (let [argv (xtract-args (first spectral-mean) (first spectral-std-deviation))]
-                      (xtract/xtract_spectral_skewness spectrum block-size argv spectral-skewness)
-                      (xtract/xtract_spectral_kurtosis spectrum block-size argv spectral-kurtosis))
+                      (raise-errors
+                       (xtract/xtract_spectral_skewness spectrum block-size argv spectral-skewness))
+                      (raise-errors
+                       (xtract/xtract_spectral_kurtosis spectrum block-size argv spectral-kurtosis)))
 
                     ;;(xtract/xtract_noisiness     wav-data block-size (xtract-args NUM_HARMONICS ) noiseness)
 
@@ -373,10 +386,16 @@
   )))
 
 
+
+    (let [block-stats (block-stats "test/fixtures/test.wav")]
+;;      (doseq [frame block-stats] (println frame))
+      (println :global (global-stats block-stats))
+      )
+
 (comment
   (dotimes [i 1]
     (let [block-stats (block-stats "test/fixtures/test.wav")]
-      (doseq [frame block-stats] (println frame))
+;;      (doseq [frame block-stats] (println frame))
       (println :global (global-stats block-stats))
       ))
 
