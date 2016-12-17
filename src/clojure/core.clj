@@ -354,6 +354,9 @@
        acc
        fields))))
 
+(defn max-for [field frame-stats]
+  (apply max (map (fn [f] (get (first (vals f)) field))  frame-stats)))
+
 (defn global-stats [frame-stats]
   (let [n (count frame-stats)
         fields (-> frame-stats first vals first (dissoc :todo) keys)
@@ -363,11 +366,7 @@
                                         (= (:f0 stats) 0.0)
                                        )) frame-stats)
         n-f0s (count f0-frames)
-        f0-totals (reduce (global-stats-reduce fields) {} f0-frames)
-
-
-        max-fn (fn [field] (apply max (map (fn [f] (get (first (vals f)) field ))  frame-stats)) )
-        ]
+        f0-totals (reduce (global-stats-reduce fields) {} f0-frames)]
 
     (let [means
           (-> {}
@@ -382,8 +381,7 @@
               (assoc :midi (/ (:midi f0-totals) n-f0s))
               (assoc :f0   (/ (:f0 f0-totals) n-f0s)))
 
-          maxs {:spectral-centroid (max-fn :spectral-centroid)}
-          ]
+          maxs {:spectral-centroid (max-for :spectral-centroid frame-stats)}]
       {:mean means
        :max maxs}
   )))
@@ -391,9 +389,7 @@
 (comment
 
   (def all-wavs (filter #(.endsWith (.getName %) ".wav") (file-seq (io/file "/Users/josephwilk/Workspace/music/samples"))))
-
   (doseq [w (take 1000 all-wavs)]
-
     (try
       (let [wav (.getPath w) ;; "test/fixtures/test.wav" ;;(.getPath wav)
             _ (println wav)
@@ -405,6 +401,7 @@
 
       (catch Exception e true)
       ))
+
   (dotimes [i 1]
     (let [block-stats (block-stats "test/fixtures/test.wav")]
 ;;      (doseq [frame block-stats] (println frame))
