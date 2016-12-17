@@ -363,7 +363,11 @@
                                         (= (:f0 stats) 0.0)
                                        )) frame-stats)
         n-f0s (count f0-frames)
-        f0-totals (reduce (global-stats-reduce fields) {} f0-frames)]
+        f0-totals (reduce (global-stats-reduce fields) {} f0-frames)
+
+
+        max-fn (fn [field] (apply max (map (fn [f] (get (first (vals f)) field ))  frame-stats)) )
+        ]
 
     (let [means
           (-> {}
@@ -376,8 +380,12 @@
               ;;Only over non 0 frequencies
               (assoc :spectral-inharmonicity (/ (:spectral-inharmonicity f0-totals) n-f0s))
               (assoc :midi (/ (:midi f0-totals) n-f0s))
-              (assoc :f0   (/ (:f0 f0-totals) n-f0s)))]
-      {:mean means}
+              (assoc :f0   (/ (:f0 f0-totals) n-f0s)))
+
+          maxs {:spectral-centroid (max-fn :spectral-centroid)}
+          ]
+      {:mean means
+       :max maxs}
   )))
 
 (comment
