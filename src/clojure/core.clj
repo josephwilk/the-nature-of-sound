@@ -389,6 +389,22 @@
   )))
 
 (comment
+
+  (def all-wavs (filter #(.endsWith (.getName %) ".wav") (file-seq (io/file "/Users/josephwilk/Workspace/music/samples"))))
+
+  (doseq [w (take 1000 all-wavs)]
+
+    (try
+      (let [wav (.getPath w) ;; "test/fixtures/test.wav" ;;(.getPath wav)
+            _ (println wav)
+            b-stats (block-stats wav 512)
+            g-stats (global-stats b-stats)
+            ]
+        (println {:file wav :stats g-stats})
+        )
+
+      (catch Exception e true)
+      ))
   (dotimes [i 1]
     (let [block-stats (block-stats "test/fixtures/test.wav")]
 ;;      (doseq [frame block-stats] (println frame))
