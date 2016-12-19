@@ -13,13 +13,13 @@ public class xtractJNI {
   public final static native double double_array_getitem(long jarg1, int jarg2);
   public final static native void double_array_setitem(long jarg1, int jarg2, double jarg3);
 
-static {
-     try { System.loadLibrary("xtract");
-}
-catch (RuntimeException e) {
-  System.out.println("Failed to load the C++ libraries during SWIG module initialisation");
-  e.printStackTrace();
-}
+  static {
+    try { System.loadLibrary("xtract");
+  }
+  catch (RuntimeException e) {
+    System.out.println("Failed to load the C++ libraries during SWIG module initialisation");
+    e.printStackTrace();
+  }
 }
 
   public final static native long doublea_to_voidp(long jarg1);
